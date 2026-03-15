@@ -1,8 +1,6 @@
 services:
   postgres:
     image: postgres:16-alpine
-    ports:
-      - "5434:5432"
     environment:
       POSTGRES_DB: email_db
       POSTGRES_USER: postgres
