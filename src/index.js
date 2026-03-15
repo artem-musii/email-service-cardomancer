@@ -13,7 +13,7 @@ const createApp = async ({ overrides = {}, config: configOverride } = {}) => {
     const { default: postgres } = await import('postgres')
     const { drizzle } = await import('drizzle-orm/postgres-js')
     const amqplib = await import('amqplib')
-    const { SendGridProvider } = await import('./infrastructure/sendgrid/sendgrid-provider.js')
+    const { ResendProvider } = await import('./infrastructure/resend/resend-provider.js')
     const { DrizzleEmailLogRepository } = await import('./infrastructure/db/drizzle-email-log.js')
     const { FileTemplateStore } = await import('./infrastructure/templates/file-template-store.js')
     const { RabbitMQPublisher } = await import('./infrastructure/rabbitmq/event-publisher.js')
@@ -25,7 +25,7 @@ const createApp = async ({ overrides = {}, config: configOverride } = {}) => {
     const rabbitChannel = await rabbitConn.createChannel()
 
     container.register('templateStore', () => FileTemplateStore(new URL('../../templates', import.meta.url).pathname))
-    container.register('emailProvider', () => SendGridProvider({ apiKey: config.sendgrid.apiKey }))
+    container.register('emailProvider', () => ResendProvider({ apiKey: config.resend.apiKey }))
     container.register('emailLogRepository', () => DrizzleEmailLogRepository(db))
     container.register('eventPublisher', () => RabbitMQPublisher(rabbitChannel))
 

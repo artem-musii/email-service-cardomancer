@@ -1,11 +1,11 @@
-import sgMail from '@sendgrid/mail'
+import { Resend } from 'resend'
 
-const SendGridProvider = ({ apiKey }) => {
-  sgMail.setApiKey(apiKey)
+const ResendProvider = ({ apiKey }) => {
+  const resend = new Resend(apiKey)
 
   const send = async ({ to, subject, html, from }) => {
     try {
-      await sgMail.send({ to, from, subject, html })
+      await resend.emails.send({ from, to, subject, html })
       return { success: true }
     } catch (e) {
       return { success: false, error: e.message }
@@ -15,4 +15,4 @@ const SendGridProvider = ({ apiKey }) => {
   return { send }
 }
 
-export { SendGridProvider }
+export { ResendProvider }

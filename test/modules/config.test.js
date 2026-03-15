@@ -6,13 +6,13 @@ describe('loadConfig', () => {
     const env = {
       DATABASE_URL: 'postgres://localhost/email_db',
       RABBITMQ_URL: 'amqp://localhost',
-      SENDGRID_API_KEY: 'SG.test',
+      RESEND_API_KEY: 're_test_123',
       FROM_EMAIL: 'noreply@test.com',
       PORT: '3002'
     }
     const config = loadConfig(env)
     expect(config.database.url).toBe('postgres://localhost/email_db')
-    expect(config.sendgrid.apiKey).toBe('SG.test')
+    expect(config.resend.apiKey).toBe('re_test_123')
     expect(config.fromEmail).toBe('noreply@test.com')
   })
 
