@@ -9,6 +9,7 @@ const RabbitMQConsumer = (channel, { onEmailSend, log = noopLog }) => {
     await channel.assertExchange(EXCHANGE, 'direct', { durable: true })
     await channel.assertQueue(QUEUE, { durable: true })
     await channel.bindQueue(QUEUE, EXCHANGE, 'email.send')
+    await channel.prefetch(10)
     log.info('queue bound', { queue: QUEUE, exchange: EXCHANGE })
 
     channel.consume(QUEUE, async (msg) => {
@@ -20,8 +21,8 @@ const RabbitMQConsumer = (channel, { onEmailSend, log = noopLog }) => {
         channel.ack(msg)
         log.info('message processed successfully', { type: event.type })
       } catch (e) {
-        channel.nack(msg, false, false)
-        log.error('message processing failed', { error: e.message })
+        channel.nack(msg, false, true)
+        log.error('message processing failed, requeued', { error: e.message })
       }
     })
 
