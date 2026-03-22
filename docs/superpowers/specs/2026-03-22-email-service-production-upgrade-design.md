@@ -102,8 +102,7 @@ src/
 │       ├── routes/
 │       │   ├── health-routes.js          # Deep checks (DB + RabbitMQ)
 │       │   └── admin-routes.js           # Template CRUD + email log API
-│       └── middleware/
-│           └── admin-auth.js             # API key guard
+│       └── middleware/                    # Auth guard inlined in admin-routes.js
 ├── admin/                                # React admin panel
 │   ├── index.html                        # Entry HTML (Bun HTML imports)
 │   ├── app.tsx                           # App shell, routing, layout
@@ -806,51 +805,7 @@ Changes from current:
 
 ### docker-compose.yml
 
-```yaml
-services:
-  app:
-    build: .
-    ports:
-      - "${PORT:-3002}:3002"
-    env_file: .env
-    depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: email_db
-    ports:
-      - "5434:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-volumes:
-  postgres-data:
-```
-
-Changes: Added RabbitMQ service with management UI and healthcheck.
+Removed. Infrastructure (PostgreSQL, RabbitMQ) is managed by Coolify, not local compose. The existing `docker-compose.yml` file will be deleted.
 
 ---
 
@@ -1129,7 +1084,6 @@ const FakeTemplateRepository = (initial = {}) => {
 | `src/modules/templates/template-service.js` | Rewrite: DB-backed CRUD + render |
 | `src/infrastructure/http/routes/health-routes.js` | Deep checks (DB + RabbitMQ) |
 | `package.json` | New deps, new scripts, prepare hook |
-| `docker-compose.yml` | Add RabbitMQ, env_file, ports |
 | `Dockerfile` | curl, appuser, HEALTHCHECK |
 | `.env.example` | Add ADMIN_API_KEY |
 | `test/fakes/fake-email-log-repository.js` | New fields, findAll/findById |
@@ -1145,6 +1099,7 @@ const FakeTemplateRepository = (initial = {}) => {
 | `src/infrastructure/templates/file-template-store.js` | Templates now in DB |
 | `test/fakes/in-memory-template-store.js` | Replaced by fake-template-repository |
 | `index.ts` | Unused placeholder file |
+| `docker-compose.yml` | Infrastructure managed by Coolify, not local compose |
 
 ### Keep (unchanged)
 
@@ -1196,13 +1151,19 @@ A single Drizzle migration will:
 
 ---
 
-## 20. Implementation Order
+## 20. Implementation Order (TDD)
 
-1. **Quality gates** — ESLint, Prettier, Husky, lint-staged, CI/CD
-2. **Infrastructure** — Connection manager, graceful shutdown, deep health checks, security headers, Docker improvements
+All implementation follows test-driven development: write the test first, watch it fail, then implement until it passes.
+
+1. **Quality gates** — ESLint, Prettier, Husky, lint-staged, CI/CD (no tests needed — tooling config)
+2. **Infrastructure foundations** — Connection manager (test → impl), graceful shutdown (test → impl), deep health checks (test → impl), security headers, Dockerfile improvements
 3. **Database** — Schema changes (templates table, extended log), migration, seed
-4. **Core logic** — Template service rewrite, email service with retry, message validation
-5. **Admin API** — Routes, auth middleware, template CRUD, log endpoints
-6. **Admin UI** — React app, template management, log viewer
-7. **Tests** — Unit tests for all new/changed modules, E2E test
+4. **Core logic** — For each module: write tests first, then implement
+   - Template service: CRUD tests → CRUD impl, render tests → render impl
+   - Retry policy: delay calculation tests → impl
+   - Email service: send/retry/log tests → impl
+   - Message validation: validation tests → consumer impl
+5. **Admin API** — Auth middleware tests → impl, template CRUD endpoint tests → impl, log endpoint tests → impl
+6. **Admin UI** — React app, template management, log viewer (frontend, no unit tests — validated via E2E)
+7. **E2E tests** — Full send flow, admin flow
 8. **Cleanup** — Delete removed files, update .env.example, format all code
