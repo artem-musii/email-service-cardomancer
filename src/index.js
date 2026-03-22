@@ -43,7 +43,11 @@ const createApp = async ({ overrides = {}, config: configOverride } = {}) => {
 
     const emailService = EmailService({
       emailProvider: ResendProvider({ apiKey: config.resend.apiKey, log }),
-      eventPublisher: RabbitMQPublisher(rabbitManager, { log }),
+      eventPublisher: (() => {
+        const publisher = RabbitMQPublisher(rabbitManager, { log })
+        rabbitManager.registerPublisher(publisher)
+        return publisher
+      })(),
       emailLogRepository,
       templateService,
       fromEmail: config.fromEmail,

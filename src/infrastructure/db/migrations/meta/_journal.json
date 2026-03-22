@@ -8,6 +8,20 @@
       "when": 1773537539812,
       "tag": "0000_lovely_brood",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1774216151765,
+      "tag": "0001_heavy_lorna_dane",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774216200000,
+      "tag": "0002_seed_templates",
+      "breakpoints": true
     }
   ]
 }

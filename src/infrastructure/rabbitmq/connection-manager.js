@@ -4,6 +4,7 @@ const RabbitMQConnectionManager = ({ url, log }) => {
   let connection = null
   let channel = null
   let closed = false
+  let reconnecting = false
   let reconnectDelay = 1000
   const publishers = []
   const consumers = []
@@ -29,6 +30,7 @@ const RabbitMQConnectionManager = ({ url, log }) => {
     })
 
     reconnectDelay = 1000
+    reconnecting = false
     for (const publisher of publishers) publisher.reset()
     for (const consumer of consumers) {
       try {
@@ -41,7 +43,8 @@ const RabbitMQConnectionManager = ({ url, log }) => {
   }
 
   const scheduleReconnect = () => {
-    if (closed) return
+    if (closed || reconnecting) return
+    reconnecting = true
     const delay = reconnectDelay
     reconnectDelay = Math.min(reconnectDelay * 2, 30000)
     if (log) log.warn('rabbitmq reconnecting', { delay })

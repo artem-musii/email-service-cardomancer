@@ -25,12 +25,27 @@ const adminRoutes = (app, { templateService, emailLogRepository, adminApiKey, _l
       return t
     })
 
-    .post('/templates', async ({ body }) => {
-      return templateService.create(body)
+    .post('/templates', async ({ body, set }) => {
+      const { name, html, variables, maxRetries } = body || {}
+      if (!name || typeof name !== 'string' || !html || typeof html !== 'string') {
+        set.status = 400
+        return { error: 'name and html are required strings' }
+      }
+      return templateService.create({
+        name,
+        html,
+        variables: Array.isArray(variables) ? variables : [],
+        maxRetries: typeof maxRetries === 'number' ? maxRetries : 0,
+      })
     })
 
-    .put('/templates/:id', async ({ params, body }) => {
-      return templateService.update(params.id, body)
+    .put('/templates/:id', async ({ params, body, set: _set }) => {
+      const allowed = {}
+      if (body.name !== undefined) allowed.name = body.name
+      if (body.html !== undefined) allowed.html = body.html
+      if (body.variables !== undefined) allowed.variables = body.variables
+      if (body.maxRetries !== undefined) allowed.maxRetries = body.maxRetries
+      return templateService.update(params.id, allowed)
     })
 
     .delete('/templates/:id', async ({ params }) => {

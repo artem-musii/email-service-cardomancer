@@ -8,7 +8,11 @@ const createLogger = (service, level = 'info') => {
     const entry = { time: new Date().toISOString(), level: lvl, service, msg }
     if (data !== undefined) entry.data = data
     const method = lvl === 'error' ? 'error' : lvl === 'warn' ? 'warn' : 'log'
-    console[method](JSON.stringify(entry))
+    try {
+      console[method](JSON.stringify(entry))
+    } catch {
+      console[method](JSON.stringify({ ...entry, data: '[unserializable]' }))
+    }
   }
 
   return {

@@ -3,8 +3,7 @@ import React from 'react'
 export interface Template {
   id: string
   name: string
-  subject: string
-  htmlBody: string
+  html: string
   variables: string[]
   maxRetries: number
   updatedAt: string
@@ -82,9 +81,6 @@ export function TemplateList({ templates, onEdit, onDelete, onCreate }: Template
                 <tr key={template.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="text-sm font-medium text-gray-900">{template.name}</div>
-                    {template.subject && (
-                      <div className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{template.subject}</div>
-                    )}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap gap-1">

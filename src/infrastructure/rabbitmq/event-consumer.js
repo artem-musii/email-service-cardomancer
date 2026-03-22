@@ -63,7 +63,7 @@ const RabbitMQConsumer = (connectionManager, { onEmailSend, log = noopLog }) => 
         })
 
         if (result.retry) {
-          channel.ack(msg)
+          // Publish retry BEFORE acking to avoid losing the message on crash
           channel.publish(RETRY_EXCHANGE, 'email.retry', Buffer.from(JSON.stringify(event)), {
             persistent: true,
             expiration: String(result.delayMs),
@@ -72,14 +72,15 @@ const RabbitMQConsumer = (connectionManager, { onEmailSend, log = noopLog }) => 
               'x-email-log-id': result.emailLogId,
             },
           })
+          channel.ack(msg)
           log.info('message scheduled for retry', { attempt, delayMs: result.delayMs })
         } else {
           channel.ack(msg)
           log.info('message processed', { template: event.payload.template, success: result.success })
         }
       } catch (e) {
-        channel.nack(msg, false, true)
-        log.error('message processing failed, requeued', { error: e.message })
+        channel.nack(msg, false, false)
+        log.error('message processing failed, discarded', { error: e.message })
       }
     })
 

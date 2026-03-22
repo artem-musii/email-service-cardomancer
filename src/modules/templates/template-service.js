@@ -1,3 +1,6 @@
+const escapeHtml = (str) =>
+  String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
 const TemplateService = ({ templateRepository }) => {
   const create = async ({ name, html, variables = [], maxRetries = 0 }) => {
     return templateRepository.create({ name, html, variables, maxRetries })
@@ -28,7 +31,7 @@ const TemplateService = ({ templateRepository }) => {
     if (!template) throw new Error(`Template not found: ${name}`)
     let html = template.html
     for (const [key, value] of Object.entries(variables)) {
-      html = html.replaceAll(`{{${key}}}`, String(value))
+      html = html.replaceAll(`{{${key}}}`, escapeHtml(value))
     }
     return { html, maxRetries: template.maxRetries }
   }

@@ -9,8 +9,7 @@ interface TemplateFormProps {
 
 interface FormState {
   name: string
-  subject: string
-  htmlBody: string
+  html: string
   variables: string
   maxRetries: number
 }
@@ -20,8 +19,7 @@ type TabKey = 'editor' | 'preview'
 export function TemplateForm({ template, onSave, onCancel }: TemplateFormProps) {
   const [form, setForm] = useState<FormState>({
     name: template?.name ?? '',
-    subject: template?.subject ?? '',
-    htmlBody: template?.htmlBody ?? '',
+    html: template?.html ?? '',
     variables: Array.isArray(template?.variables) ? template!.variables.join(', ') : '',
     maxRetries: template?.maxRetries ?? 3,
   })
@@ -32,8 +30,7 @@ export function TemplateForm({ template, onSave, onCancel }: TemplateFormProps) 
     if (template) {
       setForm({
         name: template.name ?? '',
-        subject: template.subject ?? '',
-        htmlBody: template.htmlBody ?? '',
+        html: template.html ?? '',
         variables: Array.isArray(template.variables) ? template.variables.join(', ') : '',
         maxRetries: template.maxRetries ?? 3,
       })
@@ -43,7 +40,7 @@ export function TemplateForm({ template, onSave, onCancel }: TemplateFormProps) 
   function validate(): boolean {
     const newErrors: Partial<Record<keyof FormState, string>> = {}
     if (!form.name.trim()) newErrors.name = 'Name is required.'
-    if (!form.htmlBody.trim()) newErrors.htmlBody = 'HTML body is required.'
+    if (!form.html.trim()) newErrors.html = 'HTML body is required.'
     if (form.maxRetries < 0 || form.maxRetries > 10) newErrors.maxRetries = 'Must be between 0 and 10.'
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -60,8 +57,7 @@ export function TemplateForm({ template, onSave, onCancel }: TemplateFormProps) 
 
     onSave({
       name: form.name.trim(),
-      subject: form.subject.trim(),
-      htmlBody: form.htmlBody,
+      html: form.html,
       variables,
       maxRetries: Number(form.maxRetries),
     })
@@ -105,18 +101,6 @@ export function TemplateForm({ template, onSave, onCancel }: TemplateFormProps) 
               }`}
             />
             {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
-          </div>
-
-          {/* Subject */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
-            <input
-              type="text"
-              value={form.subject}
-              onChange={(e) => set('subject', e.target.value)}
-              placeholder="e.g. Welcome to {{appName}}!"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
           </div>
 
           {/* Variables */}
@@ -174,20 +158,20 @@ export function TemplateForm({ template, onSave, onCancel }: TemplateFormProps) 
 
             {tab === 'editor' ? (
               <textarea
-                value={form.htmlBody}
-                onChange={(e) => set('htmlBody', e.target.value)}
+                value={form.html}
+                onChange={(e) => set('html', e.target.value)}
                 rows={16}
                 spellCheck={false}
                 placeholder="<!DOCTYPE html><html>…</html>"
                 className={`w-full border rounded-b-lg rounded-tr-lg px-3 py-3 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y ${
-                  errors.htmlBody ? 'border-red-400' : 'border-gray-300'
+                  errors.html ? 'border-red-400' : 'border-gray-300'
                 }`}
               />
             ) : (
               <div className="border border-gray-300 rounded-b-lg rounded-tr-lg overflow-hidden min-h-72 bg-white">
-                {form.htmlBody ? (
+                {form.html ? (
                   <iframe
-                    srcDoc={form.htmlBody}
+                    srcDoc={form.html}
                     title="Template preview"
                     className="w-full"
                     style={{ minHeight: '400px', border: 'none' }}
@@ -200,7 +184,7 @@ export function TemplateForm({ template, onSave, onCancel }: TemplateFormProps) 
                 )}
               </div>
             )}
-            {errors.htmlBody && <p className="text-xs text-red-500 mt-1">{errors.htmlBody}</p>}
+            {errors.html && <p className="text-xs text-red-500 mt-1">{errors.html}</p>}
           </div>
 
           {/* Actions */}
