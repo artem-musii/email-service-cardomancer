@@ -1,4 +1,4 @@
-const REQUIRED = ['DATABASE_URL', 'RABBITMQ_URL', 'RESEND_API_KEY', 'FROM_EMAIL']
+const REQUIRED = ['DATABASE_URL', 'RABBITMQ_URL', 'RESEND_API_KEY', 'FROM_EMAIL', 'ADMIN_API_KEY']
 
 const loadConfig = (env) => {
   for (const key of REQUIRED) {
@@ -9,6 +9,7 @@ const loadConfig = (env) => {
     rabbitmq: { url: env.RABBITMQ_URL },
     resend: { apiKey: env.RESEND_API_KEY },
     fromEmail: env.FROM_EMAIL,
+    adminApiKey: env.ADMIN_API_KEY,
     port: parseInt(env.PORT || '3002', 10),
     logLevel: env.LOG_LEVEL || 'info',
   }
