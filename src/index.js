@@ -6,6 +6,7 @@ import { TemplateService } from './modules/templates/template-service.js'
 import { EmailService } from './modules/sender/email-service.js'
 import { healthRoutes } from './infrastructure/http/routes/health-routes.js'
 import { adminRoutes } from './infrastructure/http/routes/admin-routes.js'
+import adminHtml from './admin/index.html'
 
 const createApp = async ({ overrides = {}, config: configOverride } = {}) => {
   const config = configOverride || loadConfig(process.env)
@@ -97,6 +98,9 @@ const createApp = async ({ overrides = {}, config: configOverride } = {}) => {
 
   healthRoutes(app, { db, rabbitManager })
   adminRoutes(app, { templateService, emailLogRepository, adminApiKey: config.adminApiKey, log })
+
+  app.get('/admin', () => new Response(adminHtml))
+  app.get('/admin/*', () => new Response(adminHtml))
 
   const server = app.listen({ port: config.port, maxRequestBodySize: 65536, idleTimeout: 30 })
   const port = server.server.port
