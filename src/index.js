@@ -1,7 +1,6 @@
 import { Elysia } from 'elysia'
 import { loadConfig } from './config.js'
 import { createLogger } from './logger.js'
-import { createContainer } from './container.js'
 import { TemplateService } from './modules/templates/template-service.js'
 import { EmailService } from './modules/sender/email-service.js'
 import { healthRoutes } from './infrastructure/http/routes/health-routes.js'

@@ -95,7 +95,7 @@ describe('EmailService', () => {
       variables: { name: 'Alice' },
       attempt: 1,
     })
-    const second = await service.sendEmail({
+    await service.sendEmail({
       to: 'a@b.com',
       subject: 'Welcome',
       template: 'welcome',

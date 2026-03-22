@@ -17,10 +17,7 @@ const validateEmailMessage = (event) => {
 }
 
 const RabbitMQConsumer = (connectionManager, { onEmailSend, log = noopLog }) => {
-  let currentChannel = null
-
   const setup = async (channel) => {
-    currentChannel = channel
     await channel.assertExchange(EXCHANGE, 'direct', { durable: true })
     await channel.assertExchange(RETRY_EXCHANGE, 'direct', { durable: true })
 
