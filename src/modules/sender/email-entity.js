@@ -1,6 +1,6 @@
 const SUBJECTS = {
   'otp-code': 'Your verification code',
-  'welcome': 'Welcome!'
+  welcome: 'Welcome!',
 }
 
 const getSubject = (template) => SUBJECTS[template] || template

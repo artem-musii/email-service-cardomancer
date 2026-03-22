@@ -11,9 +11,15 @@ describe('EmailService', () => {
     const provider = InMemoryEmailProvider({ shouldFail })
     const events = FakeEventPublisher()
     const logRepo = FakeEmailLogRepository()
-    const templateStore = InMemoryTemplateStore({ 'otp-code': 'Code: {{code}}', 'welcome': 'Hi {{name}}' })
+    const templateStore = InMemoryTemplateStore({ 'otp-code': 'Code: {{code}}', welcome: 'Hi {{name}}' })
     const templateService = TemplateService({ templateStore })
-    const service = EmailService({ emailProvider: provider, eventPublisher: events, emailLogRepository: logRepo, templateService, fromEmail: 'noreply@test.com' })
+    const service = EmailService({
+      emailProvider: provider,
+      eventPublisher: events,
+      emailLogRepository: logRepo,
+      templateService,
+      fromEmail: 'noreply@test.com',
+    })
     return { service, provider, events, logRepo }
   }
 

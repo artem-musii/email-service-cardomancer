@@ -10,7 +10,7 @@ const loadConfig = (env) => {
     resend: { apiKey: env.RESEND_API_KEY },
     fromEmail: env.FROM_EMAIL,
     port: parseInt(env.PORT || '3002', 10),
-    logLevel: env.LOG_LEVEL || 'info'
+    logLevel: env.LOG_LEVEL || 'info',
   }
 }
 

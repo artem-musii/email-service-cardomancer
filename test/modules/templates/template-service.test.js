@@ -17,7 +17,7 @@ describe('TemplateService', () => {
   })
 
   it('replaces multiple variables', async () => {
-    const store = InMemoryTemplateStore({ 'welcome': '<p>Hi {{name}}, welcome to {{app}}</p>' })
+    const store = InMemoryTemplateStore({ welcome: '<p>Hi {{name}}, welcome to {{app}}</p>' })
     const service = TemplateService({ templateStore: store })
     const html = await service.render('welcome', { name: 'Alice', app: 'Cardomancer' })
     expect(html).toBe('<p>Hi Alice, welcome to Cardomancer</p>')

@@ -7,7 +7,11 @@ const FakeEmailLogRepository = () => {
   }
   const updateStatus = async (id, status, error = null) => {
     const log = logs.find((l) => l.id === id)
-    if (log) { log.status = status; log.error = error; if (status === 'sent') log.sentAt = new Date() }
+    if (log) {
+      log.status = status
+      log.error = error
+      if (status === 'sent') log.sentAt = new Date()
+    }
     return log
   }
   return { create, updateStatus, logs }

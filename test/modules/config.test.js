@@ -8,7 +8,7 @@ describe('loadConfig', () => {
       RABBITMQ_URL: 'amqp://localhost',
       RESEND_API_KEY: 're_test_123',
       FROM_EMAIL: 'noreply@test.com',
-      PORT: '3002'
+      PORT: '3002',
     }
     const config = loadConfig(env)
     expect(config.database.url).toBe('postgres://localhost/email_db')

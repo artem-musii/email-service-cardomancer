@@ -9,7 +9,7 @@ const emailLog = pgTable('email_log', {
   status: statusEnum('status').default('queued').notNull(),
   error: text('error'),
   sentAt: timestamp('sent_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull()
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
 export { statusEnum, emailLog }

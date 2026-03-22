@@ -40,12 +40,12 @@ const createApp = async ({ overrides = {}, config: configOverride } = {}) => {
       emailLogRepository: container.resolve('emailLogRepository'),
       templateService,
       fromEmail: config.fromEmail,
-      log
+      log,
     })
 
     const consumer = RabbitMQConsumer(rabbitChannel, {
       onEmailSend: ({ to, template, variables }) => emailService.sendEmail({ to, template, variables }),
-      log
+      log,
     })
     await consumer.start()
   }
