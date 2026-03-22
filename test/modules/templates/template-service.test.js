@@ -1,25 +1,92 @@
 import { describe, it, expect } from 'bun:test'
 import { TemplateService } from '../../../src/modules/templates/template-service.js'
-import { InMemoryTemplateStore } from '../../fakes/in-memory-template-store.js'
+import { FakeTemplateRepository } from '../../fakes/fake-template-repository.js'
 
 describe('TemplateService', () => {
-  it('renders template with variables', async () => {
-    const store = InMemoryTemplateStore({ 'otp-code': '<p>Your code: {{code}}</p>' })
-    const service = TemplateService({ templateStore: store })
-    const html = await service.render('otp-code', { code: '123456' })
-    expect(html).toBe('<p>Your code: 123456</p>')
+  const setup = (initial = []) => {
+    const repo = FakeTemplateRepository(initial)
+    const service = TemplateService({ templateRepository: repo })
+    return { service, repo }
+  }
+
+  describe('CRUD', () => {
+    it('creates a template', async () => {
+      const { service } = setup()
+      const t = await service.create({ name: 'test', html: '<p>{{msg}}</p>', variables: ['msg'], maxRetries: 2 })
+      expect(t.name).toBe('test')
+      expect(t.maxRetries).toBe(2)
+    })
+
+    it('gets template by name', async () => {
+      const { service } = setup()
+      await service.create({ name: 'test', html: '<p>hi</p>', variables: [], maxRetries: 0 })
+      const t = await service.getByName('test')
+      expect(t.name).toBe('test')
+    })
+
+    it('returns null for missing template name', async () => {
+      const { service } = setup()
+      const t = await service.getByName('nope')
+      expect(t).toBeNull()
+    })
+
+    it('gets template by id', async () => {
+      const { service } = setup()
+      const created = await service.create({ name: 'test2', html: '<p>hi</p>', variables: [], maxRetries: 0 })
+      const t = await service.getById(created.id)
+      expect(t.name).toBe('test2')
+    })
+
+    it('lists all templates', async () => {
+      const { service } = setup()
+      await service.create({ name: 'a', html: '<p>a</p>', variables: [], maxRetries: 0 })
+      await service.create({ name: 'b', html: '<p>b</p>', variables: [], maxRetries: 0 })
+      const all = await service.getAll()
+      expect(all).toHaveLength(2)
+    })
+
+    it('updates a template', async () => {
+      const { service } = setup()
+      const t = await service.create({ name: 'test', html: '<p>old</p>', variables: [], maxRetries: 0 })
+      const updated = await service.update(t.id, { html: '<p>new</p>', maxRetries: 3 })
+      expect(updated.html).toBe('<p>new</p>')
+      expect(updated.maxRetries).toBe(3)
+    })
+
+    it('deletes a template', async () => {
+      const { service } = setup()
+      const t = await service.create({ name: 'test', html: '<p>hi</p>', variables: [], maxRetries: 0 })
+      await service.delete(t.id)
+      const all = await service.getAll()
+      expect(all).toHaveLength(0)
+    })
   })
 
-  it('throws on missing template', async () => {
-    const store = InMemoryTemplateStore({})
-    const service = TemplateService({ templateStore: store })
-    await expect(service.render('nope', {})).rejects.toThrow()
-  })
+  describe('render', () => {
+    it('renders template with variables', async () => {
+      const { service } = setup()
+      await service.create({ name: 'otp', html: '<p>Code: {{code}}</p>', variables: ['code'], maxRetries: 0 })
+      const result = await service.render('otp', { code: '123456' })
+      expect(result.html).toBe('<p>Code: 123456</p>')
+      expect(result.maxRetries).toBe(0)
+    })
 
-  it('replaces multiple variables', async () => {
-    const store = InMemoryTemplateStore({ welcome: '<p>Hi {{name}}, welcome to {{app}}</p>' })
-    const service = TemplateService({ templateStore: store })
-    const html = await service.render('welcome', { name: 'Alice', app: 'Cardomancer' })
-    expect(html).toBe('<p>Hi Alice, welcome to Cardomancer</p>')
+    it('throws on missing template', async () => {
+      const { service } = setup()
+      await expect(service.render('nope', {})).rejects.toThrow('Template not found: nope')
+    })
+
+    it('replaces multiple variables', async () => {
+      const { service } = setup()
+      await service.create({
+        name: 'welcome',
+        html: '<p>Hi {{name}}, welcome to {{app}}</p>',
+        variables: ['name', 'app'],
+        maxRetries: 3,
+      })
+      const result = await service.render('welcome', { name: 'Alice', app: 'Acme' })
+      expect(result.html).toBe('<p>Hi Alice, welcome to Acme</p>')
+      expect(result.maxRetries).toBe(3)
+    })
   })
 })
