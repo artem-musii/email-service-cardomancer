@@ -5,63 +5,128 @@ import { createContainer } from './container.js'
 import { TemplateService } from './modules/templates/template-service.js'
 import { EmailService } from './modules/sender/email-service.js'
 import { healthRoutes } from './infrastructure/http/routes/health-routes.js'
+import { adminRoutes } from './infrastructure/http/routes/admin-routes.js'
 
 const createApp = async ({ overrides = {}, config: configOverride } = {}) => {
   const config = configOverride || loadConfig(process.env)
   const log = createLogger('email-service', config.logLevel)
-  const container = createContainer({ overrides })
+
+  let db = null
+  let rabbitManager = null
+  let templateService
+  let emailLogRepository
 
   if (!overrides.emailProvider) {
-    const { default: postgres } = await import('postgres')
-    const { drizzle } = await import('drizzle-orm/postgres-js')
-    const amqplib = await import('amqplib')
+    // Production mode: real infrastructure
+    const { drizzle } = await import('drizzle-orm/bun-sql')
+    const { RabbitMQConnectionManager } = await import('./infrastructure/rabbitmq/connection-manager.js')
     const { ResendProvider } = await import('./infrastructure/resend/resend-provider.js')
     const { DrizzleEmailLogRepository } = await import('./infrastructure/db/drizzle-email-log.js')
-    const { FileTemplateStore } = await import('./infrastructure/templates/file-template-store.js')
+    const { DrizzleTemplateRepository } = await import('./infrastructure/db/drizzle-template-repository.js')
     const { RabbitMQPublisher } = await import('./infrastructure/rabbitmq/event-publisher.js')
     const { RabbitMQConsumer } = await import('./infrastructure/rabbitmq/event-consumer.js')
 
-    const client = postgres(config.database.url)
-    const db = drizzle(client)
+    db = drizzle(config.database.url)
     log.info('database connected')
-    const rabbitConn = await amqplib.connect(config.rabbitmq.url)
-    const rabbitChannel = await rabbitConn.createChannel()
-    log.info('rabbitmq connected')
 
-    container.register('templateStore', () => FileTemplateStore(new URL('../templates', import.meta.url).pathname))
-    container.register('emailProvider', () => ResendProvider({ apiKey: config.resend.apiKey, log }))
-    container.register('emailLogRepository', () => DrizzleEmailLogRepository(db))
-    container.register('eventPublisher', () => RabbitMQPublisher(rabbitChannel, { log }))
+    rabbitManager = RabbitMQConnectionManager({ url: config.rabbitmq.url, log })
+    try {
+      await rabbitManager.connect()
+    } catch (err) {
+      log.warn('rabbitmq initial connection failed, will retry in background', { err: err.message })
+      rabbitManager.scheduleReconnect()
+    }
 
-    const templateService = TemplateService({ templateStore: container.resolve('templateStore') })
+    const templateRepo = DrizzleTemplateRepository(db)
+    emailLogRepository = DrizzleEmailLogRepository(db)
+    templateService = TemplateService({ templateRepository: templateRepo })
+
     const emailService = EmailService({
-      emailProvider: container.resolve('emailProvider'),
-      eventPublisher: container.resolve('eventPublisher'),
-      emailLogRepository: container.resolve('emailLogRepository'),
+      emailProvider: ResendProvider({ apiKey: config.resend.apiKey, log }),
+      eventPublisher: RabbitMQPublisher(rabbitManager, { log }),
+      emailLogRepository,
       templateService,
       fromEmail: config.fromEmail,
       log,
     })
 
-    const consumer = RabbitMQConsumer(rabbitChannel, {
-      onEmailSend: ({ to, template, variables }) => emailService.sendEmail({ to, template, variables }),
+    const consumer = RabbitMQConsumer(rabbitManager, {
+      onEmailSend: (params) => emailService.sendEmail(params),
       log,
     })
     await consumer.start()
+  } else {
+    // Test mode: use overrides
+    const templateRepo = overrides.templateRepository
+    emailLogRepository = overrides.emailLogRepository
+    templateService = TemplateService({ templateRepository: templateRepo })
   }
 
   const app = new Elysia()
-  healthRoutes(app)
-  const server = app.listen(config.port)
+    .onBeforeHandle(({ set }) => {
+      set.headers['X-Content-Type-Options'] = 'nosniff'
+      set.headers['X-Frame-Options'] = 'DENY'
+      set.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+      set.headers['X-XSS-Protection'] = '0'
+      set.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    })
+    .derive(({ headers }) => ({
+      requestId: headers['x-request-id'] || crypto.randomUUID(),
+    }))
+    .onAfterHandle(({ request, set, requestId }) => {
+      const url = new URL(request.url)
+      if (url.pathname === '/health') return
+      log.info('request', {
+        method: request.method,
+        path: url.pathname,
+        status: set.status || 200,
+        requestId,
+      })
+      set.headers['X-Request-ID'] = requestId
+    })
+    .onError(({ code, error, set, requestId }) => {
+      if (code === 'VALIDATION') return
+      log.error('unhandled error', {
+        error: error.message,
+        stack: error.stack,
+        requestId: requestId || 'unknown',
+      })
+      set.status = 500
+      return { error: 'Internal server error' }
+    })
 
-  return { app: server, port: server.server.port }
+  healthRoutes(app, { db, rabbitManager })
+  adminRoutes(app, { templateService, emailLogRepository, adminApiKey: config.adminApiKey, log })
+
+  const server = app.listen({ port: config.port, maxRequestBodySize: 65536, idleTimeout: 30 })
+  const port = server.server.port
+
+  const shutdown = async () => {
+    log.info('shutting down gracefully...')
+    server.stop()
+    if (rabbitManager) await rabbitManager.close()
+    if (db) await db.$client.close()
+    log.info('shutdown complete')
+    process.exit(0)
+  }
+
+  process.on('SIGTERM', shutdown)
+  process.on('SIGINT', shutdown)
+
+  return { app: server, port, shutdown, connections: { db, rabbitManager } }
 }
 
 export { createApp }
 
 if (import.meta.main) {
-  createApp().then(({ port }) => {
-    const log = createLogger('email-service', loadConfig(process.env).logLevel)
-    log.info(`email service running on port ${port}`)
-  })
+  createApp()
+    .then(({ port }) => {
+      const log = createLogger('email-service', process.env.LOG_LEVEL || 'info')
+      log.info('email service started', { port })
+    })
+    .catch((err) => {
+      const log = createLogger('email-service', process.env.LOG_LEVEL || 'info')
+      log.error('failed to start email service', { err: err.message, stack: err.stack })
+      process.exit(1)
+    })
 }

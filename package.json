@@ -32,10 +32,9 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "resend": "^4.1.2",
     "amqplib": "^0.10.9",
     "drizzle-orm": "^0.45.1",
     "elysia": "^1.4.27",
-    "postgres": "^3.4.8"
+    "resend": "^4.1.2"
   }
 }
