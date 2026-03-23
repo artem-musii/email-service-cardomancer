@@ -1,11 +1,31 @@
 import { Elysia } from 'elysia'
-import { secureCompare } from '../../../shared/utils.js'
+import { secureCompareAny, parseBasicAuth } from '../../../shared/utils.js'
+import { createRateLimiter } from '../../../shared/rate-limiter.js'
 
-const adminRoutes = (app, { templateService, emailLogRepository, adminApiKey, _log }) => {
+const getClientIp = (headers) => headers['x-forwarded-for']?.split(',')[0]?.trim() || headers['x-real-ip'] || 'unknown'
+
+const authenticateRequest = (headers, adminApiKeys) => {
+  const key = headers['x-admin-key']
+  if (key) return secureCompareAny(key, adminApiKeys)
+  const password = parseBasicAuth(headers['authorization'])
+  if (password) return secureCompareAny(password, adminApiKeys)
+  return false
+}
+
+const adminRoutes = (app, { templateService, emailLogRepository, adminApiKeys, _log }) => {
+  const limiter = createRateLimiter({ windowMs: 60_000, maxRequests: 60 })
+
   const adminApp = new Elysia({ prefix: '/admin/api' })
     .onBeforeHandle(({ headers, set }) => {
-      const key = headers['x-admin-key']
-      if (!key || !secureCompare(key, adminApiKey)) {
+      const ip = getClientIp(headers)
+      const result = limiter.check(ip)
+      if (!result.allowed) {
+        set.status = 429
+        set.headers['Retry-After'] = String(result.retryAfter)
+        return { error: 'Too many requests', retryAfter: result.retryAfter }
+      }
+
+      if (!authenticateRequest(headers, adminApiKeys)) {
         set.status = 401
         return { error: 'Unauthorized' }
       }
@@ -26,13 +46,15 @@ const adminRoutes = (app, { templateService, emailLogRepository, adminApiKey, _l
     })
 
     .post('/templates', async ({ body, set }) => {
-      const { name, html, variables, maxRetries } = body || {}
+      const { name, subject, fromName, html, variables, maxRetries } = body || {}
       if (!name || typeof name !== 'string' || !html || typeof html !== 'string') {
         set.status = 400
         return { error: 'name and html are required strings' }
       }
       return templateService.create({
         name,
+        subject: typeof subject === 'string' ? subject : undefined,
+        fromName: typeof fromName === 'string' ? fromName : undefined,
         html,
         variables: Array.isArray(variables) ? variables : [],
         maxRetries: typeof maxRetries === 'number' ? maxRetries : 0,
@@ -42,6 +64,8 @@ const adminRoutes = (app, { templateService, emailLogRepository, adminApiKey, _l
     .put('/templates/:id', async ({ params, body, set: _set }) => {
       const allowed = {}
       if (body.name !== undefined) allowed.name = body.name
+      if (body.subject !== undefined) allowed.subject = body.subject
+      if (body.fromName !== undefined) allowed.fromName = body.fromName
       if (body.html !== undefined) allowed.html = body.html
       if (body.variables !== undefined) allowed.variables = body.variables
       if (body.maxRetries !== undefined) allowed.maxRetries = body.maxRetries

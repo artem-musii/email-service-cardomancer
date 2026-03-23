@@ -15,10 +15,12 @@ const FakeTemplateRepository = (initial = []) => {
 
   const findAll = async () => [...templates.values()]
 
-  const create = async ({ name, html, variables = [], maxRetries = 0 }) => {
+  const create = async ({ name, subject, fromName, html, variables = [], maxRetries = 0 }) => {
     const t = {
       id: crypto.randomUUID(),
       name,
+      subject: subject || null,
+      fromName: fromName || null,
       html,
       variables,
       maxRetries,

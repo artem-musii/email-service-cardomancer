@@ -67,7 +67,23 @@ const createApp = async ({ overrides = {}, config: configOverride } = {}) => {
   }
 
   const app = new Elysia()
-    .onBeforeHandle(({ set }) => {
+    .onBeforeHandle(({ request, set }) => {
+      // CORS
+      if (config.corsOrigin) {
+        const origin = request.headers.get('origin')
+        if (origin && config.corsOrigin === origin) {
+          set.headers['Access-Control-Allow-Origin'] = config.corsOrigin
+          set.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+          set.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-Admin-Key, X-Request-ID'
+          set.headers['Access-Control-Max-Age'] = '86400'
+        }
+      }
+      if (request.method === 'OPTIONS') {
+        set.status = 204
+        return ''
+      }
+
+      // Security headers
       set.headers['X-Content-Type-Options'] = 'nosniff'
       set.headers['X-Frame-Options'] = 'DENY'
       set.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
@@ -100,13 +116,20 @@ const createApp = async ({ overrides = {}, config: configOverride } = {}) => {
     })
 
   healthRoutes(app, { db, rabbitManager })
-  adminRoutes(app, { templateService, emailLogRepository, adminApiKey: config.adminApiKey, log })
+  adminRoutes(app, { templateService, emailLogRepository, adminApiKeys: config.adminApiKeys, log })
 
-  app.get('/admin', () => new Response(adminHtml))
-  app.get('/admin/*', () => new Response(adminHtml))
+  const elysiaFetch = app.fetch.bind(app)
 
-  const server = app.listen({ port: config.port, maxRequestBodySize: 65536, idleTimeout: 30 })
-  const port = server.server.port
+  const server = Bun.serve({
+    port: config.port,
+    maxRequestBodySize: 65536,
+    idleTimeout: 30,
+    routes: {
+      '/admin': adminHtml,
+    },
+    fetch: elysiaFetch,
+  })
+  const port = server.port
 
   const shutdown = async () => {
     log.info('shutting down gracefully...')
@@ -120,7 +143,7 @@ const createApp = async ({ overrides = {}, config: configOverride } = {}) => {
   process.on('SIGTERM', shutdown)
   process.on('SIGINT', shutdown)
 
-  return { app: server, port, shutdown, connections: { db, rabbitManager } }
+  return { app: { server, stop: () => server.stop() }, port, shutdown, connections: { db, rabbitManager } }
 }
 
 export { createApp }

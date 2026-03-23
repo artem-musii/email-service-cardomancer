@@ -22,6 +22,27 @@
       "when": 1774216200000,
       "tag": "0002_seed_templates",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1774218477459,
+      "tag": "0003_strong_living_tribunal",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1774218989398,
+      "tag": "0004_harsh_gamora",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1774219353877,
+      "tag": "0005_cooing_sister_grimm",
+      "breakpoints": true
     }
   ]
 }

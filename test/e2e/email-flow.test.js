@@ -21,7 +21,7 @@ describe('Email Flow E2E', () => {
         rabbitmq: { url: 'unused' },
         resend: { apiKey: 'unused' },
         fromEmail: 'noreply@test.com',
-        adminApiKey: 'e2e-key',
+        adminApiKeys: ['e2e-key'],
         port: 0,
         logLevel: 'error',
       },

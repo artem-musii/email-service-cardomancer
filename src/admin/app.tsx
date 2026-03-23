@@ -98,6 +98,8 @@ function LoginScreen({ onLogin }: { onLogin: (key: string) => void }) {
 // Root app
 // ---------------------------------------------------------------------------
 
+const BASIC_AUTH_MARKER = '__basic_auth__'
+
 function App() {
   const [apiKey, setApiKey] = useState<string | null>(() => sessionStorage.getItem('adminApiKey'))
   const [route, setRoute] = useState(getRoute)
@@ -105,12 +107,21 @@ function App() {
   useEffect(() => {
     const onHashChange = () => setRoute(getRoute())
     window.addEventListener('hashchange', onHashChange)
-    // Redirect bare root to /templates
     if (!window.location.hash || window.location.hash === '#' || window.location.hash === '#/') {
       window.location.hash = '#/templates'
     }
     return () => window.removeEventListener('hashchange', onHashChange)
   }, [])
+
+  // Auto-detect Basic Auth: the browser sends credentials automatically
+  useEffect(() => {
+    if (apiKey) return
+    fetch('/admin/api/templates')
+      .then((res) => {
+        if (res.ok) setApiKey(BASIC_AUTH_MARKER)
+      })
+      .catch(() => {})
+  }, [apiKey])
 
   function handleLogin(key: string) {
     sessionStorage.setItem('adminApiKey', key)
@@ -130,14 +141,15 @@ function App() {
   }
 
   function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
-    return fetch(path, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Admin-Key': apiKey!,
-        ...(init.headers || {}),
-      },
-    })
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...((init.headers as Record<string, string>) || {}),
+    }
+    // When behind Basic Auth, browser sends credentials automatically
+    if (apiKey !== BASIC_AUTH_MARKER) {
+      headers['X-Admin-Key'] = apiKey!
+    }
+    return fetch(path, { ...init, headers })
   }
 
   let page: React.ReactNode

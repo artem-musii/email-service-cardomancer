@@ -8,9 +8,10 @@ const noopLog = { debug: noop, info: noop, warn: noop, error: noop }
 
 const validateEmailMessage = (event) => {
   if (!event?.payload) return { valid: false, error: 'missing payload' }
-  const { to, subject, template, variables } = event.payload
+  const { to, subject, fromName, template, variables } = event.payload
   if (!to || typeof to !== 'string') return { valid: false, error: 'missing or invalid "to"' }
-  if (!subject || typeof subject !== 'string') return { valid: false, error: 'missing or invalid "subject"' }
+  if (subject !== undefined && typeof subject !== 'string') return { valid: false, error: 'invalid "subject"' }
+  if (fromName !== undefined && typeof fromName !== 'string') return { valid: false, error: 'invalid "fromName"' }
   if (!template || typeof template !== 'string') return { valid: false, error: 'missing or invalid "template"' }
   if (!variables || typeof variables !== 'object') return { valid: false, error: 'missing or invalid "variables"' }
   return { valid: true }

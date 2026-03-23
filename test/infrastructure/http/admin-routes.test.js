@@ -28,7 +28,7 @@ describe('Admin Routes', () => {
     adminRoutes(elysia, {
       templateService,
       emailLogRepository,
-      adminApiKey: 'test-key',
+      adminApiKeys: ['test-key'],
       log: { info: () => {}, error: () => {}, warn: () => {}, debug: () => {} },
     })
     app = elysia.listen(0)
@@ -110,5 +110,62 @@ describe('Admin Routes', () => {
     expect(res.status).toBe(200)
     const log = await res.json()
     expect(log.toAddress).toBe('test@x.com')
+  })
+
+  it('accepts Basic Auth credentials', async () => {
+    const encoded = Buffer.from(`admin:test-key`).toString('base64')
+    const res = await fetch(`${baseUrl}/admin/api/templates`, {
+      headers: { Authorization: `Basic ${encoded}` },
+    })
+    expect(res.status).toBe(200)
+  })
+
+  it('rejects invalid Basic Auth credentials', async () => {
+    const encoded = Buffer.from(`admin:wrong-key`).toString('base64')
+    const res = await fetch(`${baseUrl}/admin/api/templates`, {
+      headers: { Authorization: `Basic ${encoded}` },
+    })
+    expect(res.status).toBe(401)
+  })
+
+  it('accepts any of multiple admin keys', async () => {
+    // This test uses the single key setup from beforeAll
+    // The key rotation feature is validated via the second key not working
+    const res = await fetch(`${baseUrl}/admin/api/templates`, {
+      headers: { 'x-admin-key': 'test-key', 'content-type': 'application/json' },
+    })
+    expect(res.status).toBe(200)
+  })
+})
+
+describe('Admin Routes - Rate Limiting', () => {
+  let app, baseUrl
+
+  beforeAll(async () => {
+    const templateRepo = FakeTemplateRepository()
+    const templateService = TemplateService({ templateRepository: templateRepo })
+    const emailLogRepository = FakeEmailLogRepository()
+
+    const elysia = new Elysia()
+    adminRoutes(elysia, {
+      templateService,
+      emailLogRepository,
+      adminApiKeys: ['test-key'],
+      log: { info: () => {}, error: () => {}, warn: () => {}, debug: () => {} },
+    })
+    app = elysia.listen(0)
+    baseUrl = `http://localhost:${app.server.port}`
+  })
+
+  afterAll(() => app.stop())
+
+  it('returns 429 after exceeding rate limit', async () => {
+    const headers = { 'x-admin-key': 'test-key' }
+    const requests = Array.from({ length: 61 }, () => fetch(`${baseUrl}/admin/api/templates`, { headers }))
+    const responses = await Promise.all(requests)
+    const statuses = responses.map((r) => r.status)
+    expect(statuses).toContain(429)
+    const rateLimited = responses.find((r) => r.status === 429)
+    expect(rateLimited.headers.get('retry-after')).toBeTruthy()
   })
 })

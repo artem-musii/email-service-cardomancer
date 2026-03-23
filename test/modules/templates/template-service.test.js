@@ -12,8 +12,15 @@ describe('TemplateService', () => {
   describe('CRUD', () => {
     it('creates a template', async () => {
       const { service } = setup()
-      const t = await service.create({ name: 'test', html: '<p>{{msg}}</p>', variables: ['msg'], maxRetries: 2 })
+      const t = await service.create({
+        name: 'test',
+        subject: 'Hello {{msg}}',
+        html: '<p>{{msg}}</p>',
+        variables: ['msg'],
+        maxRetries: 2,
+      })
       expect(t.name).toBe('test')
+      expect(t.subject).toBe('Hello {{msg}}')
       expect(t.maxRetries).toBe(2)
     })
 
@@ -63,12 +70,26 @@ describe('TemplateService', () => {
   })
 
   describe('render', () => {
-    it('renders template with variables', async () => {
+    it('renders template with variables and subject', async () => {
       const { service } = setup()
-      await service.create({ name: 'otp', html: '<p>Code: {{code}}</p>', variables: ['code'], maxRetries: 0 })
+      await service.create({
+        name: 'otp',
+        subject: 'Your code: {{code}}',
+        html: '<p>Code: {{code}}</p>',
+        variables: ['code'],
+        maxRetries: 0,
+      })
       const result = await service.render('otp', { code: '123456' })
       expect(result.html).toBe('<p>Code: 123456</p>')
+      expect(result.subject).toBe('Your code: 123456')
       expect(result.maxRetries).toBe(0)
+    })
+
+    it('returns null subject when template has no subject', async () => {
+      const { service } = setup()
+      await service.create({ name: 'minimal', html: '<p>hi</p>', variables: [], maxRetries: 0 })
+      const result = await service.render('minimal', {})
+      expect(result.subject).toBeNull()
     })
 
     it('throws on missing template', async () => {

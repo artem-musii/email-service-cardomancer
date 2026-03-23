@@ -17,8 +17,23 @@ describe('validateEmailMessage', () => {
     expect(validateEmailMessage(event).valid).toBe(false)
   })
 
-  it('fails on missing subject', () => {
+  it('allows missing subject (resolved from template)', () => {
     const event = { payload: { to: 'a@b.com', template: 'otp', variables: {} } }
+    expect(validateEmailMessage(event)).toEqual({ valid: true })
+  })
+
+  it('fails on invalid subject type', () => {
+    const event = { payload: { to: 'a@b.com', subject: 123, template: 'otp', variables: {} } }
+    expect(validateEmailMessage(event).valid).toBe(false)
+  })
+
+  it('allows optional fromName', () => {
+    const event = { payload: { to: 'a@b.com', fromName: 'Cardomancer', template: 'otp', variables: {} } }
+    expect(validateEmailMessage(event)).toEqual({ valid: true })
+  })
+
+  it('fails on invalid fromName type', () => {
+    const event = { payload: { to: 'a@b.com', fromName: 123, template: 'otp', variables: {} } }
     expect(validateEmailMessage(event).valid).toBe(false)
   })
 

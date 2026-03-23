@@ -12,11 +12,29 @@ const EmailService = ({
   fromEmail,
   log = noopLog,
 }) => {
-  const sendEmail = async ({ to, subject, template, variables, retryPolicy, attempt = 1, emailLogId = null }) => {
+  const formatFrom = (name) => (name ? `${name} <${fromEmail}>` : fromEmail)
+
+  const sendEmail = async ({
+    to,
+    subject,
+    fromName,
+    template,
+    variables,
+    retryPolicy,
+    attempt = 1,
+    emailLogId = null,
+  }) => {
     log.info('sending email', { to: maskEmail(to), template, attempt })
 
-    const { html, maxRetries: templateMaxRetries } = await templateService.render(template, variables)
+    const {
+      html,
+      subject: templateSubject,
+      fromName: templateFromName,
+      maxRetries: templateMaxRetries,
+    } = await templateService.render(template, variables)
 
+    const resolvedSubject = subject || templateSubject || template
+    const resolvedFrom = formatFrom(fromName || templateFromName)
     const maxRetries = retryPolicy?.maxRetries ?? templateMaxRetries
     const baseDelayMs = retryPolicy?.baseDelayMs ?? 1000
 
@@ -26,17 +44,17 @@ const EmailService = ({
     } else {
       logEntry = await emailLogRepository.create({
         toAddress: to,
-        subject,
+        subject: resolvedSubject,
         template,
         status: 'queued',
         attempt,
         maxRetries,
         variables,
-        fromEmail,
+        fromEmail: resolvedFrom,
       })
     }
 
-    const result = await emailProvider.send({ to, subject, html, from: fromEmail })
+    const result = await emailProvider.send({ to, subject: resolvedSubject, html, from: resolvedFrom })
 
     if (result.success) {
       await emailLogRepository.updateStatus(logEntry.id, 'sent')

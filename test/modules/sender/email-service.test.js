@@ -13,8 +13,20 @@ describe('EmailService', () => {
     const logRepo = FakeEmailLogRepository()
     const templateRepo = FakeTemplateRepository()
     const templateService = TemplateService({ templateRepository: templateRepo })
-    await templateRepo.create({ name: 'otp-code', html: 'Code: {{code}}', variables: ['code'], maxRetries: 0 })
-    await templateRepo.create({ name: 'welcome', html: 'Hi {{name}}', variables: ['name'], maxRetries: 3 })
+    await templateRepo.create({
+      name: 'otp-code',
+      subject: 'Your verification code',
+      html: 'Code: {{code}}',
+      variables: ['code'],
+      maxRetries: 0,
+    })
+    await templateRepo.create({
+      name: 'welcome',
+      subject: 'Welcome {{name}}',
+      html: 'Hi {{name}}',
+      variables: ['name'],
+      maxRetries: 3,
+    })
     const service = EmailService({
       emailProvider: provider,
       eventPublisher: events,
@@ -40,6 +52,87 @@ describe('EmailService', () => {
     expect(logRepo.logs[0].status).toBe('sent')
     expect(logRepo.logs[0].subject).toBe('Your code')
     expect(events.published.find((e) => e.type === 'email.sent')).toBeTruthy()
+  })
+
+  it('formats from with caller fromName', async () => {
+    const { service, provider, logRepo } = await setup()
+    await service.sendEmail({
+      to: 'a@b.com',
+      subject: 'Hi',
+      fromName: 'Cardomancer',
+      template: 'otp-code',
+      variables: { code: '123456' },
+    })
+    expect(provider.sent[0].from).toBe('Cardomancer <noreply@test.com>')
+    expect(logRepo.logs[0].fromEmail).toBe('Cardomancer <noreply@test.com>')
+  })
+
+  it('formats from with template fromName when caller omits it', async () => {
+    const provider = InMemoryEmailProvider()
+    const logRepo = FakeEmailLogRepository()
+    const templateRepo = FakeTemplateRepository()
+    const templateService = TemplateService({ templateRepository: templateRepo })
+    await templateRepo.create({
+      name: 'branded',
+      subject: 'Hi',
+      fromName: 'MyApp',
+      html: '<p>hi</p>',
+      variables: [],
+      maxRetries: 0,
+    })
+    const svc = EmailService({
+      emailProvider: provider,
+      eventPublisher: FakeEventPublisher(),
+      emailLogRepository: logRepo,
+      templateService,
+      fromEmail: 'noreply@test.com',
+    })
+    await svc.sendEmail({ to: 'a@b.com', template: 'branded', variables: {} })
+    expect(provider.sent[0].from).toBe('MyApp <noreply@test.com>')
+  })
+
+  it('uses plain fromEmail when no fromName provided', async () => {
+    const { service, provider } = await setup()
+    await service.sendEmail({
+      to: 'a@b.com',
+      subject: 'Hi',
+      template: 'otp-code',
+      variables: { code: '123456' },
+    })
+    expect(provider.sent[0].from).toBe('noreply@test.com')
+  })
+
+  it('uses template subject when caller omits subject', async () => {
+    const { service, provider, logRepo } = await setup()
+    const result = await service.sendEmail({
+      to: 'a@b.com',
+      template: 'otp-code',
+      variables: { code: '123456' },
+    })
+    expect(result.success).toBe(true)
+    expect(provider.sent[0].subject).toBe('Your verification code')
+    expect(logRepo.logs[0].subject).toBe('Your verification code')
+  })
+
+  it('uses template name as fallback when neither caller nor template has subject', async () => {
+    const { service, provider, logRepo } = await setup()
+    const templateRepo = FakeTemplateRepository()
+    const templateService = TemplateService({ templateRepository: templateRepo })
+    await templateRepo.create({ name: 'no-subject', html: '<p>hi</p>', variables: [], maxRetries: 0 })
+    const svc = EmailService({
+      emailProvider: provider,
+      eventPublisher: FakeEventPublisher(),
+      emailLogRepository: logRepo,
+      templateService,
+      fromEmail: 'noreply@test.com',
+    })
+    const result = await svc.sendEmail({
+      to: 'a@b.com',
+      template: 'no-subject',
+      variables: {},
+    })
+    expect(result.success).toBe(true)
+    expect(provider.sent[0].subject).toBe('no-subject')
   })
 
   it('logs failure and publishes email.failed when no retries', async () => {

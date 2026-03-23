@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { TemplateList, Template } from '../components/template-list'
+import { TemplateList, type Template } from '../components/template-list'
 import { TemplateForm } from '../components/template-form'
 import { useApi } from '../app'
 

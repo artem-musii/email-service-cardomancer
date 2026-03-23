@@ -12,4 +12,17 @@ const secureCompare = (a, b) => {
   return timingSafeEqual(hmac(a), hmac(b))
 }
 
-export { maskEmail, secureCompare }
+const secureCompareAny = (value, keys) => keys.some((k) => secureCompare(value, k))
+
+const parseBasicAuth = (header) => {
+  if (!header || !header.startsWith('Basic ')) return null
+  try {
+    const decoded = Buffer.from(header.slice(6), 'base64').toString()
+    const idx = decoded.indexOf(':')
+    return idx === -1 ? null : decoded.slice(idx + 1)
+  } catch {
+    return null
+  }
+}
+
+export { maskEmail, secureCompare, secureCompareAny, parseBasicAuth }

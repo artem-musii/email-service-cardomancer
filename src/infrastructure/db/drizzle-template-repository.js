@@ -16,8 +16,11 @@ const DrizzleTemplateRepository = (db) => {
     return db.select().from(emailTemplates).orderBy(emailTemplates.name)
   }
 
-  const create = async ({ name, html, variables = [], maxRetries = 0 }) => {
-    const rows = await db.insert(emailTemplates).values({ name, html, variables, maxRetries }).returning()
+  const create = async ({ name, subject, fromName, html, variables = [], maxRetries = 0 }) => {
+    const rows = await db
+      .insert(emailTemplates)
+      .values({ name, subject, fromName, html, variables, maxRetries })
+      .returning()
     return rows[0]
   }
 

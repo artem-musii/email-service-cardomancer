@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { LogTable, EmailLog } from '../components/log-table'
+import { LogTable, type EmailLog } from '../components/log-table'
 import { useApi } from '../app'
 
 interface Filters {
