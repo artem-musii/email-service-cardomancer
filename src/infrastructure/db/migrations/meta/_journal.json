@@ -43,6 +43,13 @@
       "when": 1774219353877,
       "tag": "0005_cooing_sister_grimm",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1774663200000,
+      "tag": "0006_welcome_login_templates",
+      "breakpoints": true
     }
   ]
 }
