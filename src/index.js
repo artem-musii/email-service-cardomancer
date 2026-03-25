@@ -124,6 +124,7 @@ const createApp = async ({ overrides = {}, config: configOverride } = {}) => {
     port: config.port,
     maxRequestBodySize: 65536,
     idleTimeout: 30,
+    development: false,
     routes: {
       '/admin': adminHtml,
     },
