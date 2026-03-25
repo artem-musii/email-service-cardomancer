@@ -4,7 +4,7 @@ export interface EmailLog {
   id: string
   to: string
   subject: string
-  templateName?: string
+  template?: string
   status: 'queued' | 'sent' | 'failed'
   attempt: number
   error?: string | null
@@ -87,7 +87,7 @@ export function LogTable({ logs, expandedId, onToggle }: LogTableProps) {
                 >
                   <td className="px-5 py-3 text-sm text-gray-900 font-medium max-w-[180px] truncate">{log.to}</td>
                   <td className="px-5 py-3 text-sm text-gray-700 max-w-[200px] truncate">{log.subject || '—'}</td>
-                  <td className="px-5 py-3 text-sm text-gray-600">{log.templateName || '—'}</td>
+                  <td className="px-5 py-3 text-sm text-gray-600">{log.template || '—'}</td>
                   <td className="px-5 py-3">
                     <StatusBadge status={log.status} />
                   </td>
